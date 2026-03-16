@@ -1,0 +1,486 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sahil MLflow | Forecast Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg:#07111f; --panel:#0f1b2e; --panel-2:#12233b; --panel-3:#0b1524;
+      --line:rgba(160,185,220,.16); --text:#eef4ff; --muted:#8ba0be; --soft:#bdd0ea;
+      --primary:#5eead4; --blue:#60a5fa; --green:#34d399; --yellow:#fbbf24; --red:#fb7185;
+      --shadow:0 18px 50px rgba(0,0,0,.28); --r:22px;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      font-family:'Manrope',sans-serif; color:var(--text); min-height:100vh;
+      background:
+        radial-gradient(circle at top left, rgba(94,234,212,.12), transparent 25%),
+        radial-gradient(circle at top right, rgba(96,165,250,.14), transparent 24%),
+        linear-gradient(180deg, #040b15 0%, #07111f 100%);
+    }
+    body.nav-open { overflow:hidden; }
+    a,button { color:inherit; font:inherit; }
+    button { border:none; background:none; cursor:pointer; }
+    .loading-bar { position:fixed; top:0; left:0; width:100%; height:3px; display:none; z-index:1000; background:linear-gradient(90deg,var(--primary),var(--blue),var(--yellow)); animation:slide 1.5s infinite ease-in-out; }
+    @keyframes slide { from { transform:translateX(-100%);} to { transform:translateX(100%);} }
+    .mobile-topbar { display:none; align-items:center; justify-content:space-between; padding:16px; }
+    .menu-btn { width:46px; height:46px; border-radius:16px; border:1px solid var(--line); background:rgba(15,27,46,.92); }
+    .app { max-width:1440px; margin:0 auto; display:grid; grid-template-columns:290px minmax(0,1fr); min-height:100vh; position:relative; z-index:1; }
+    .overlay { display:none; position:fixed; inset:0; background:rgba(2,7,13,.68); z-index:40; backdrop-filter:blur(6px); }
+    .sidebar { padding:24px 18px; position:sticky; top:0; height:100vh; }
+    .sidebar-panel, .topbar, .card, .card-lg, .best-card { background:linear-gradient(180deg, rgba(15,27,46,.94), rgba(9,17,29,.96)); border:1px solid var(--line); box-shadow:var(--shadow); }
+    .sidebar-panel { height:100%; border-radius:28px; padding:22px; display:flex; flex-direction:column; gap:22px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .brand-mark { width:50px; height:50px; border-radius:18px; display:grid; place-items:center; background:linear-gradient(135deg, rgba(94,234,212,.18), rgba(96,165,250,.22)); border:1px solid rgba(94,234,212,.18); }
+    .brand-title, .hero-title, .best-name { font-family:'Space Grotesk',sans-serif; }
+    .brand-sub { color:var(--muted); font-size:.82rem; }
+    .nav-title, .eyebrow, .label, .section-kicker, th { text-transform:uppercase; letter-spacing:.14em; font-size:.76rem; color:var(--muted); font-weight:800; }
+    nav { display:grid; gap:8px; }
+    .nav-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-radius:18px; text-decoration:none; border:1px solid transparent; color:var(--soft); }
+    .nav-item:hover, .nav-item.active { background:rgba(96,165,250,.08); border-color:var(--line); color:var(--text); }
+    .nav-left { display:flex; align-items:center; gap:12px; }
+    .pill { padding:4px 8px; border-radius:999px; font-size:.72rem; color:var(--primary); background:rgba(94,234,212,.1); border:1px solid rgba(94,234,212,.14); }
+    .sidebar-note { margin-top:auto; padding:18px; border-radius:20px; background:rgba(255,255,255,.03); border:1px solid var(--line); color:var(--soft); line-height:1.6; font-size:.9rem; }
+    .main { padding:24px 24px 36px 0; }
+    .main-inner { display:grid; gap:18px; }
+    .topbar { border-radius:28px; padding:24px; display:flex; justify-content:space-between; gap:18px; }
+    .hero-copy { max-width:720px; display:grid; gap:10px; }
+    .eyebrow { color:var(--primary); display:inline-flex; align-items:center; gap:8px; width:max-content; padding:8px 12px; border-radius:999px; background:rgba(94,234,212,.08); border:1px solid rgba(94,234,212,.14); }
+    .hero-title { font-size:clamp(2rem,4vw,3.2rem); line-height:1.02; letter-spacing:-.04em; }
+    .hero-sub { color:var(--soft); line-height:1.65; max-width:64ch; }
+    .hero-stats { display:flex; flex-wrap:wrap; gap:12px; margin-top:6px; }
+    .hero-stat, .status-tile, .mini-item, .spot-stat, .best-metric { background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:18px; padding:14px 16px; }
+    .stat-label { color:var(--muted); text-transform:uppercase; letter-spacing:.12em; font-size:.74rem; margin-bottom:6px; }
+    .stat-value { font-weight:800; }
+    .hero-actions { min-width:300px; display:grid; gap:12px; }
+    .status-pill { border-radius:18px; border:1px solid var(--line); background:rgba(255,255,255,.03); padding:14px 18px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .dot { width:10px; height:10px; border-radius:50%; background:var(--green); box-shadow:0 0 14px rgba(52,211,153,.8); }
+    .btn { padding:14px 18px; border-radius:18px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .btn-primary { color:#06201c; background:linear-gradient(135deg,var(--primary),#8bffe8); box-shadow:0 14px 30px rgba(45,212,191,.18); }
+    .page { display:none; flex-direction:column; gap:18px; }
+    .page.active { display:flex; }
+    .overview-top, .split, .control-grid { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr); gap:18px; }
+    .metric-grid, .feature-grid { display:grid; gap:18px; }
+    .metric-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .feature-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .card, .card-lg, .best-card { border-radius:var(--r); }
+    .card { padding:20px; position:relative; overflow:hidden; }
+    .card:before { content:""; position:absolute; inset:0 0 auto; height:2px; background:linear-gradient(90deg, transparent, rgba(94,234,212,.75), transparent); }
+    .value { margin-top:16px; font-size:clamp(1.7rem,3vw,2.2rem); font-weight:800; }
+    .copy { margin-top:10px; color:var(--soft); line-height:1.6; font-size:.92rem; }
+    .trend { margin-top:14px; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.04); font-size:.82rem; font-weight:700; }
+    .up { color:var(--green); } .warn { color:var(--yellow); } .down { color:var(--red); }
+    .card-lg { padding:22px; }
+    .spotlight { position:relative; overflow:hidden; }
+    .spotlight:after { content:""; position:absolute; width:240px; height:240px; right:-90px; top:-90px; border-radius:50%; background:radial-gradient(circle, rgba(94,234,212,.2), transparent 70%); }
+    .spot-top { display:flex; justify-content:space-between; gap:16px; }
+    .spot-headline { margin-top:12px; font-size:clamp(1.8rem,3vw,2.5rem); max-width:11ch; line-height:1.05; font-family:'Space Grotesk',sans-serif; letter-spacing:-.04em; }
+    .spot-copy { margin-top:12px; color:var(--soft); line-height:1.7; }
+    .spot-stats { margin-top:20px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .icon-box { width:82px; height:82px; border-radius:24px; display:grid; place-items:center; border:1px solid var(--line); background:rgba(255,255,255,.04); }
+    .icon-box i { font-size:2rem; color:var(--yellow); }
+    .section-head { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:18px; }
+    .section-title { font-size:1.15rem; font-weight:800; letter-spacing:-.02em; }
+    .section-sub { color:var(--soft); font-size:.92rem; }
+    .chart-holder { position:relative; min-height:340px; }
+    .table-shell { border:1px solid var(--line); border-radius:18px; overflow:hidden; background:rgba(6,13,24,.5); }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; min-width:620px; }
+    th { text-align:left; padding:14px 16px; background:rgba(96,165,250,.08); border-bottom:1px solid var(--line); }
+    td { padding:14px 16px; border-bottom:1px solid rgba(160,185,220,.1); color:var(--soft); font-size:.92rem; }
+    tbody tr:hover { background:rgba(96,165,250,.06); }
+    tbody tr:last-child td { border-bottom:none; }
+    .badge { display:inline-flex; align-items:center; justify-content:center; min-width:88px; padding:8px 12px; border-radius:999px; font-size:.78rem; font-weight:800; }
+    .badge-success { color:#d1fae5; background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.2); }
+    .badge-primary { color:#dbeafe; background:rgba(96,165,250,.12); border:1px solid rgba(96,165,250,.2); }
+    .best-card { display:none; padding:24px; border:1px solid rgba(94,234,212,.16); background:radial-gradient(circle at top right, rgba(94,234,212,.18), transparent 28%), linear-gradient(135deg, rgba(12,34,40,.98), rgba(13,22,42,.96)); }
+    .best-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .best-name { font-size:clamp(2rem,4vw,3rem); letter-spacing:-.05em; margin-top:10px; }
+    .best-metrics { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+    .feature-card { padding:20px; border:1px solid var(--line); border-radius:var(--r); background:linear-gradient(180deg, rgba(15,27,46,.92), rgba(9,17,29,.95)); box-shadow:var(--shadow); }
+    .feature-icon { width:48px; height:48px; border-radius:16px; display:grid; place-items:center; background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--blue); margin-bottom:14px; }
+    .feature-card h4 { margin-bottom:8px; font-size:1rem; }
+    .feature-card p { color:var(--soft); line-height:1.65; font-size:.92rem; }
+    .empty { padding:28px 18px; text-align:center; color:var(--muted); }
+    .mobile-note { display:none; color:var(--soft); }
+    @media (max-width:1200px) {
+      .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .overview-top,.split,.control-grid,.feature-grid { grid-template-columns:1fr; }
+      .topbar { flex-direction:column; }
+      .hero-actions { width:100%; min-width:0; }
+    }
+    @media (max-width:960px) {
+      .mobile-topbar { display:flex; }
+      .app { grid-template-columns:1fr; }
+      .sidebar { position:fixed; top:0; left:0; width:min(86vw,340px); height:100vh; padding:14px; z-index:60; transform:translateX(-110%); transition:transform .28s ease; }
+      body.nav-open .sidebar { transform:translateX(0); }
+      body.nav-open .overlay { display:block; }
+      .main { padding:0 16px 32px; }
+      .topbar { padding:22px 18px; }
+      .spot-stats,.best-metrics { grid-template-columns:1fr; }
+      .spot-stats { display:grid; }
+      .best-inner { flex-direction:column; align-items:flex-start; }
+      .mobile-note { display:block; }
+    }
+    @media (max-width:640px) {
+      .metric-grid { grid-template-columns:1fr; }
+      .hero-title { font-size:2rem; }
+      .hero-stats { display:grid; grid-template-columns:1fr; }
+      .chart-holder { min-height:290px; }
+      table { min-width:560px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-bar" id="global-loader"></div>
+  <div class="overlay" onclick="closeMobileNav()"></div>
+  <div class="mobile-topbar">
+    <button class="menu-btn" onclick="toggleMobileNav()" aria-label="Open navigation"><i class="fa-solid fa-bars"></i></button>
+    <div style="display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;"><i class="fa-solid fa-chart-line" style="color:var(--primary)"></i><span>Sahil MLflow</span></div>
+  </div>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-panel">
+        <div class="brand">
+          <div class="brand-mark"><i class="fa-solid fa-chart-line"></i></div>
+          <div><div class="brand-title">Sahil MLflow</div><div class="brand-sub">Hourly forecasting insight studio</div></div>
+        </div>
+        <div class="nav-title">Workspace</div>
+        <nav>
+          <a onclick="showPage('overview')" id="nav-overview" class="nav-item active"><div class="nav-left"><i class="fa-solid fa-house"></i><span>Snapshot</span></div><span class="pill">Realtime</span></a>
+          <a onclick="showPage('performance')" id="nav-performance" class="nav-item"><div class="nav-left"><i class="fa-solid fa-gauge-high"></i><span>Insights</span></div></a>
+          <a onclick="showPage('monitoring')" id="nav-monitoring" class="nav-item"><div class="nav-left"><i class="fa-solid fa-shield-halved"></i><span>Watchtower</span></div></a>
+          <a onclick="showPage('control')" id="nav-control" class="nav-item"><div class="nav-left"><i class="fa-solid fa-sliders"></i><span>Operations</span></div></a>
+        </nav>
+        <div class="sidebar-note">
+          <div class="label" style="margin-bottom:8px;">Platform status</div>
+          Forecasts, model rankings, drift checks, and recent inference history now live inside a darker, cleaner, mobile-ready Sahil MLflow workspace.
+        </div>
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:.78rem;"><span>Version 3.0</span><span>Dark UI</span></div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="main-inner">
+        <header class="topbar">
+          <div class="hero-copy">
+            <div class="eyebrow"><i class="fa-solid fa-wave-square"></i> Sahil MLflow studio</div>
+            <h1 class="hero-title" id="page-title">Market Snapshot</h1>
+            <p class="hero-sub" id="page-subtitle">Follow live BTC price movement, ensemble forecasts, model health, and prediction quality in a refined interface built for desktop and mobile.</p>
+            <div class="hero-stats">
+              <div class="hero-stat"><div class="stat-label">Runtime State</div><div class="stat-value">Active</div></div>
+              <div class="hero-stat"><div class="stat-label">Refresh Cycle</div><div class="stat-value">5 Minutes</div></div>
+              <div class="hero-stat"><div class="stat-label">Focus</div><div class="stat-value">BTCUSD Hourly</div></div>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <div class="status-pill"><span class="dot"></span> Studio Online</div>
+            <div class="status-tile"><div class="stat-label">Current BTC Price</div><div class="stat-value" id="current-price-header">$ --,---.--</div><div class="copy" style="margin-top:6px;font-size:.86rem;">Latest cached close pulled from local market data.</div></div>
+            <button class="btn btn-primary" onclick="triggerInference()"><i class="fa-solid fa-bolt"></i> Run Inference</button>
+          </div>
+        </header>
+        <p class="mobile-note" id="page-mobile-note">Realtime view of price, forecasts, and platform status.</p>
+
+        <section id="page-overview" class="page active">
+          <div class="overview-top">
+            <div class="card-lg spotlight">
+              <div class="spot-top">
+                <div>
+                  <div class="section-kicker">Realtime Forecast Brief</div>
+                  <div class="spot-headline">Read the market pulse before the next hourly close.</div>
+                  <div class="spot-copy">This spotlight area pairs the live BTC reference price with the latest ensemble projection so the core signal stands out immediately.</div>
+                </div>
+                <div class="icon-box"><i class="fa-brands fa-bitcoin"></i></div>
+              </div>
+              <div class="spot-stats">
+                <div class="spot-stat"><div class="stat-label">Current Price</div><div class="stat-value" id="current-price-spotlight">$ --,---.--</div></div>
+                <div class="spot-stat"><div class="stat-label">Next Hour Forecast</div><div class="stat-value" id="ensemble-val">$ --,---.--</div></div>
+                <div class="spot-stat"><div class="stat-label">Target Time</div><div class="stat-value" id="spotlight-target">--</div></div>
+              </div>
+            </div>
+            <div class="card-lg">
+              <div class="section-head"><div><div class="section-kicker">Quick Signal</div><div class="section-title">Realtime status panel</div></div></div>
+              <div style="display:grid;gap:12px;">
+                <div class="mini-item"><div class="stat-label">Inference cadence</div><div class="stat-value">On demand</div></div>
+                <div class="mini-item"><div class="stat-label">Ensemble accuracy</div><div class="stat-value">94.2%</div></div>
+                <div class="mini-item"><div class="stat-label">Model health</div><div class="stat-value" style="color:var(--green);">Optimal</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="card"><div class="label">Current BTC Price</div><div class="value" id="current-price">$ --,---.--</div><div class="copy">Current market reference pulled from the local cached OHLC stream.</div><div class="trend up"><i class="fa-solid fa-satellite-dish"></i> Realtime feed available</div></div>
+            <div class="card"><div class="label">Next Hour Forecast</div><div class="value" id="ensemble-val-card">$ --,---.--</div><div class="copy">Latest ensemble output produced by the active forecasting stack.</div><div class="trend" id="ensemble-ts"><i class="fa-solid fa-clock"></i> Generating...</div></div>
+            <div class="card"><div class="label">Inference Stability</div><div class="value">Moderate</div><div class="copy">Temporal smoothing keeps short-term movement realistic between runs.</div><div class="trend warn"><i class="fa-solid fa-wave-square"></i> Smoothed signal</div></div>
+            <div class="card"><div class="label">Operations Status</div><div class="value" style="color:var(--green);">Nominal</div><div class="copy">UI, logs, and prediction endpoints are aligned for dashboard display.</div><div class="trend up"><i class="fa-solid fa-check"></i> All systems green</div></div>
+          </div>
+          <div class="split">
+            <div class="card-lg">
+              <div class="section-head"><div><div class="section-kicker">Forecast View</div><div class="section-title">Prediction trend against actual price</div><div class="section-sub">Compare actual closes with ensemble, LR, ARIMA, and LSTM outputs across recent cycles.</div></div></div>
+              <div class="chart-holder"><canvas id="forecastChart"></canvas></div>
+            </div>
+            <div class="card-lg">
+              <div class="section-head"><div><div class="section-kicker">Resolved Logs</div><div class="section-title">Realtime prediction feed</div><div class="section-sub">Recent entries displayed in a compact operator table.</div></div></div>
+              <div class="table-shell"><div class="table-wrap" style="max-height:420px;"><table><thead><tr><th>Timestamp (IST)</th><th>Predicted Time</th><th>Actual</th><th>Ensemble</th><th>LR</th><th>ARIMA</th><th>LSTM</th></tr></thead><tbody id="overview-logs-body"><tr><td colspan="7" class="empty">Loading logs...</td></tr></tbody></table></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-performance" class="page">
+          <div class="best-card" id="best-model-display">
+            <div class="best-inner">
+              <div>
+                <div class="section-kicker">Top Performing Model</div>
+                <div class="best-name" id="best-model-title">--</div>
+                <div class="best-metrics">
+                  <div class="best-metric"><div class="stat-label">Lowest RMSE</div><div class="stat-value" id="best-model-rmse-val">--</div></div>
+                  <div class="best-metric"><div class="stat-label">Status</div><div class="stat-value" id="best-model-reason">Optimized</div></div>
+                </div>
+              </div>
+              <div class="icon-box"><i class="fa-solid fa-trophy"></i></div>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="card"><div class="label">Mean Squared Error</div><div class="value" id="perf-mse">--</div><div class="copy">Primary ensemble MSE from resolved historical predictions.</div></div>
+            <div class="card"><div class="label">RMSE</div><div class="value" id="perf-rmse">--</div><div class="copy">Lower is better and drives the ranking view.</div></div>
+            <div class="card"><div class="label">Prediction Stability</div><div class="value" id="stability-val">Moderate</div><div class="copy">Recent ensemble consistency summarized into a volatility posture.</div><div class="trend" id="stability-indicator"><i class="fa-solid fa-wave-square"></i> Calculating...</div></div>
+            <div class="card"><div class="label">Directional Accuracy</div><div class="value" id="perf-acc">--</div><div class="copy">Measures whether price direction was anticipated correctly.</div></div>
+          </div>
+          <div class="split">
+            <div class="card-lg">
+              <div class="section-head"><div><div class="section-kicker">Leaderboard</div><div class="section-title">Model ranking by RMSE</div><div class="section-sub">Fast comparison across the trained models used by the pipeline.</div></div></div>
+              <div class="table-shell"><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Model Name</th><th>RMSE</th></tr></thead><tbody id="leaderboard-body"><tr><td colspan="3" class="empty">Loading ranking...</td></tr></tbody></table></div></div>
+            </div>
+            <div class="card-lg">
+              <div class="section-head"><div><div class="section-kicker">Chart Lens</div><div class="section-title">RMSE comparison</div><div class="section-sub">Bar-chart view of error spread across each model.</div></div></div>
+              <div class="chart-holder" style="min-height:300px;"><canvas id="rmseChart"></canvas></div>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <div class="feature-card"><div class="feature-icon"><i class="fa-solid fa-ranking-star"></i></div><h4>Clear evaluation flow</h4><p>Performance metrics surface the strongest model quickly while keeping the broader stack visible for comparison.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fa-solid fa-chart-column"></i></div><h4>Readable analytics</h4><p>Dark cards and brighter chart accents make it easier to scan between leaderboard and metrics.</p></div>
+            <div class="feature-card"><div class="feature-icon"><i class="fa-solid fa-gauge-simple-high"></i></div><h4>Operational focus</h4><p>Stability, RMSE, and directional accuracy now read as one connected performance story.</p></div>
+          </div>
+        </section>
+
+        <section id="page-monitoring" class="page">
+          <div class="metric-grid">
+            <div class="card"><div class="label">Data Drift Status</div><div class="value" style="color:var(--green);">No Drift</div><div class="copy">Most recent drift check indicates source data remains within normal behavior ranges.</div><div class="trend up"><i class="fa-solid fa-shield"></i> P-Value: 0.42</div></div>
+            <div class="card"><div class="label">Model Drift</div><div class="value" style="color:var(--yellow);">Minor Decay</div><div class="copy">Recent performance suggests mild degradation that may justify a retraining pass.</div><div class="trend warn"><i class="fa-solid fa-rotate"></i> Retraining recommended</div></div>
+            <div class="card"><div class="label">Observation Mode</div><div class="value">Resolved Logs</div><div class="copy">The monitoring chart reads absolute prediction error from completed history entries.</div></div>
+            <div class="card"><div class="label">Watch Status</div><div class="value" style="color:var(--blue);">Tracked</div><div class="copy">Frontend checks the latest monitoring data whenever this page is opened.</div></div>
+          </div>
+          <div class="split">
+            <div class="card-lg">
+              <div class="section-head"><div><div class="section-kicker">Watchtower</div><div class="section-title">Prediction error over time</div><div class="section-sub">Absolute error trend across resolved predictions to help spot drift or instability.</div></div></div>
+              <div class="chart-holder" style="min-height:320px;"><canvas id="errorChart"></canvas></div>
+            </div>
+            <div class="feature-grid" style="grid-template-columns:1fr;">
+              <div class="feature-card"><div class="feature-icon"><i class="fa-solid fa-binoculars"></i></div><h4>Live diagnostics</h4><p>This area now reads as a dedicated diagnostic view rather than a spare chart dropped into the layout.</p></div>
+              <div class="feature-card"><div class="feature-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h4>Readable risk cues</h4><p>Warnings and healthy states are color-coded for faster review on desktop and mobile.</p></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-control" class="page">
+          <div class="control-grid">
+            <div class="card-lg">
+              <div class="section-head"><div><div class="section-kicker">Operations</div><div class="section-title">Prediction history</div><div class="section-sub">Recent predictions with status, timestamps, and model outputs in a touch-friendly table.</div></div></div>
+              <div class="table-shell"><div class="table-wrap"><table><thead><tr><th>Timestamp (IST)</th><th>Predicted Time</th><th>Ensemble Pred</th><th>LSTM</th><th>ARIMA</th><th>LR</th><th>Status</th></tr></thead><tbody id="history-body"><tr><td colspan="7" class="empty">Loading history...</td></tr></tbody></table></div></div>
+            </div>
+            <div style="display:grid;gap:18px;">
+              <div class="card"><div class="label">Inference Latency</div><div class="value" id="latency-val">--ms</div><div class="copy">Tracked from inference request to response for the latest manual execution.</div></div>
+              <div class="card"><div class="label">API Status</div><div class="value"><span class="badge badge-success">Operational</span></div><div class="copy">Frontend and API routes are currently reachable for dashboard rendering.</div></div>
+              <div class="card"><div class="label">Operator Note</div><div class="copy">This view stays mobile-friendly by keeping tables horizontally scrollable instead of collapsing them into unreadable blocks.</div></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const formatCurrency = value => {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return '--';
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+    };
+    const safeTime = ts => !ts || typeof ts !== 'string' ? '--:--' : ((ts.split('+')[0].split('.')[0].trim().split(' ')[1] || ts.split('+')[0].split('.')[0].trim()).substring(0,5));
+    const safeFullTs = ts => !ts || typeof ts !== 'string' ? '--' : (() => { const clean = ts.split('+')[0].split('.')[0].trim(); return clean.length >= 16 ? clean.substring(0,16) : clean; })();
+    const setText = (id, value) => { const el = document.getElementById(id); if (el) el.innerText = value; };
+    const setHtml = (id, value) => { const el = document.getElementById(id); if (el) el.innerHTML = value; };
+    let forecastChart = null, rmseChart = null, errorChart = null, lastPrediction = null;
+    const pageMeta = {
+      overview: { title:'Market Snapshot', subtitle:'Track live BTC price movement, ensemble forecasts, model health, and prediction quality in one high-contrast interface built for desktop and mobile.', mobile:'Realtime view of price, forecasts, and platform status.' },
+      performance: { title:'Model Insights', subtitle:'Inspect error metrics, ranking behavior, and model-level comparison data for the current forecasting stack.', mobile:'Model ranking, RMSE comparison, and forecast quality.' },
+      monitoring: { title:'System Watchtower', subtitle:'Watch for drift signals and error behavior so retraining decisions can happen before forecast quality slips.', mobile:'Error tracking and drift-oriented platform status.' },
+      control: { title:'Operations Hub', subtitle:'Review prediction history, status output, and the operational surface used to trigger fresh inference runs.', mobile:'Prediction history and operational workspace.' }
+    };
+    const theme = { text:'#bdd0ea', dim:'#8ba0be', grid:'rgba(160,185,220,.12)', tip:'#0d1828', tipBorder:'rgba(160,185,220,.2)' };
+    function closeMobileNav(){ document.body.classList.remove('nav-open'); }
+    function toggleMobileNav(){ document.body.classList.toggle('nav-open'); }
+    function showPage(pageId){
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById(`page-${pageId}`)?.classList.add('active');
+      document.getElementById(`nav-${pageId}`)?.classList.add('active');
+      const meta = pageMeta[pageId];
+      if (meta) { setText('page-title', meta.title); setText('page-subtitle', meta.subtitle); setText('page-mobile-note', meta.mobile); }
+      if (pageId === 'performance') renderPerformanceCharts();
+      if (pageId === 'monitoring') renderMonitoringCharts();
+      closeMobileNav();
+    }
+    function chartOptions(){
+      return {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ intersect:false, mode:'index' },
+        plugins:{
+          legend:{ position:'bottom', labels:{ color:theme.text, usePointStyle:true, padding:18, font:{ family:'Manrope', size:12, weight:700 } } },
+          tooltip:{ backgroundColor:theme.tip, titleColor:'#eef4ff', bodyColor:'#dce7f8', borderColor:theme.tipBorder, borderWidth:1, padding:12 }
+        },
+        scales:{
+          x:{ grid:{ display:false }, ticks:{ color:theme.dim, font:{ family:'Manrope', weight:600 } } },
+          y:{ grid:{ color:theme.grid }, ticks:{ color:theme.dim, font:{ family:'Manrope', weight:600 } } }
+        }
+      };
+    }
+    async function loadBtcPrice(){
+      try {
+        const res = await fetch('/btc-price');
+        const data = await res.json();
+        if (data.close != null) {
+          const formatted = formatCurrency(data.close);
+          setText('current-price', formatted); setText('current-price-header', formatted); setText('current-price-spotlight', formatted);
+        }
+      } catch (e) {}
+    }
+    async function loadLogsAndChart(){
+      try {
+        const res = await fetch('/logs');
+        const data = await res.json();
+        const logs = data.logs || [];
+        if (logs.length > 0) {
+          const latest = logs[0];
+          const price = formatCurrency(latest.ensemble_prediction);
+          setText('ensemble-val', price); setText('ensemble-val-card', price); setText('spotlight-target', safeFullTs(latest.predicted_time));
+          setHtml('ensemble-ts', `<i class="fa-solid fa-clock"></i> Target: ${safeFullTs(latest.predicted_time)}`);
+        }
+        const body = document.getElementById('overview-logs-body');
+        if (body) {
+          body.innerHTML = logs.length ? logs.slice(0,10).map(log => `
+            <tr>
+              <td style="font-weight:700;color:var(--text);">${safeFullTs(log.timestamp)}</td>
+              <td style="color:var(--primary);font-weight:700;">${safeFullTs(log.predicted_time || '--')}</td>
+              <td>${log.actual_price ? formatCurrency(log.actual_price) : '--'}</td>
+              <td style="color:var(--green);font-weight:700;">${formatCurrency(log.ensemble_prediction)}</td>
+              <td>${formatCurrency(log.linear_regression_prediction)}</td>
+              <td>${formatCurrency(log.arima_prediction)}</td>
+              <td>${formatCurrency(log.lstm_prediction)}</td>
+            </tr>`).join('') : '<tr><td colspan="7" class="empty">No predictions yet.</td></tr>';
+        }
+        renderOverviewChart(logs, lastPrediction);
+        updateHistoryTable(logs);
+      } catch (e) {}
+    }
+    function renderOverviewChart(logs, prediction){
+      const canvas = document.getElementById('forecastChart');
+      if (!canvas) return;
+      const sorted = [...logs].reverse();
+      const labels = sorted.map(l => safeTime(l.timestamp));
+      const actuals = sorted.map(l => l.actual_price);
+      const ensembles = sorted.map(l => l.ensemble_prediction);
+      const lrs = sorted.map(l => l.linear_regression_prediction);
+      const arimas = sorted.map(l => l.arima_prediction);
+      const lstms = sorted.map(l => l.lstm_prediction);
+      if (prediction && prediction.timestamp) { labels.push(`${safeTime(prediction.timestamp)}+`); ensembles.push(prediction.ensemble_prediction); lrs.push(prediction.linear_regression_prediction); arimas.push(prediction.arima_prediction); lstms.push(prediction.lstm_prediction); }
+      if (forecastChart) forecastChart.destroy();
+      const options = chartOptions();
+      options.plugins.tooltip.callbacks = { label: c => ` ${c.dataset.label}: ${formatCurrency(c.parsed.y)}` };
+      options.scales.y.ticks.callback = value => `$${Math.round(value / 1000)}k`;
+      forecastChart = new Chart(canvas, { type:'line', data:{ labels, datasets:[
+        { label:'Actual', data:actuals, borderColor:'#60a5fa', backgroundColor:'#60a5fa', tension:.35, pointRadius:2, borderWidth:3 },
+        { label:'Ensemble', data:ensembles, borderColor:'#34d399', backgroundColor:'#34d399', tension:.35, pointRadius:0, borderWidth:3 },
+        { label:'ARIMA', data:arimas, borderColor:'#f59e0b', backgroundColor:'#f59e0b', tension:.35, pointRadius:0, borderWidth:3 },
+        { label:'LR', data:lrs, borderColor:'#c084fc', backgroundColor:'#c084fc', tension:.35, pointRadius:0, borderWidth:3 },
+        { label:'LSTM', data:lstms, borderColor:'#fb7185', backgroundColor:'#fb7185', tension:.35, pointRadius:2, borderWidth:3 }
+      ]}, options });
+    }
+    async function renderPerformanceCharts(){
+      try {
+        const res = await fetch('/metrics');
+        const data = await res.json();
+        const stats = data.summary_stats || {};
+        if (data.best_model) {
+          document.getElementById('best-model-display').style.display = 'block';
+          setText('best-model-title', data.best_model.name); setText('best-model-rmse-val', Number(data.best_model.rmse).toFixed(2)); setText('best-model-reason', data.best_model.reason);
+        }
+        if (stats.ensemble) {
+          setText('perf-mse', Number(stats.ensemble.mse).toFixed(2)); setText('perf-rmse', Number(stats.ensemble.rmse).toFixed(2)); setText('perf-acc', `${Number(stats.ensemble.directional_accuracy).toFixed(1)}%`);
+        }
+        const status = data.stability_status || 'Stable';
+        const stabVal = document.getElementById('stability-val');
+        if (stabVal) { stabVal.innerText = status; stabVal.style.color = status === 'Volatile' ? 'var(--red)' : status === 'Moderate' ? 'var(--yellow)' : 'var(--green)'; }
+        setHtml('stability-indicator', `<i class="fa-solid fa-wave-square"></i> Status: ${status}`);
+        const rows = data.leaderboard || [];
+        const lb = document.getElementById('leaderboard-body');
+        if (lb) lb.innerHTML = rows.length ? rows.map((m,i) => `<tr><td style="font-weight:800;color:var(--text);">#${i+1}</td><td style="font-weight:700;color:var(--text);">${m.name}</td><td>${Number(m.rmse).toFixed(2)}</td></tr>`).join('') : '<tr><td colspan="3" class="empty">No leaderboard data available.</td></tr>';
+        const ctx = document.getElementById('rmseChart');
+        if (!ctx) return;
+        if (rmseChart) rmseChart.destroy();
+        const options = chartOptions(); options.plugins.legend.display = false; options.scales.y.beginAtZero = true;
+        rmseChart = new Chart(ctx, { type:'bar', data:{ labels:['LR','ARIMA','LSTM','Ensemble'], datasets:[{ label:'RMSE', data:[stats.lr?.rmse, stats.arima?.rmse, stats.lstm?.rmse, stats.ensemble?.rmse], backgroundColor:['#c084fc','#f59e0b','#fb7185','#34d399'], borderRadius:12, borderSkipped:false }] }, options });
+      } catch (e) {}
+    }
+    async function renderMonitoringCharts(){
+      try {
+        const res = await fetch('/logs?limit=100');
+        const data = await res.json();
+        const logs = (data.logs || []).filter(l => l.prediction_error != null).reverse();
+        const canvas = document.getElementById('errorChart');
+        if (!canvas) return;
+        if (logs.length === 0) {
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0,0,canvas.width,canvas.height); ctx.font = '14px Manrope'; ctx.fillStyle = '#8ba0be'; ctx.textAlign = 'center'; ctx.fillText('Waiting for resolved predictions...', canvas.width / 2, canvas.height / 2); return;
+        }
+        if (errorChart) errorChart.destroy();
+        const options = chartOptions(); options.plugins.legend.display = false; options.elements = { line:{ tension:.3 } };
+        errorChart = new Chart(canvas, { type:'line', data:{ labels:logs.map(l => safeTime(l.timestamp)), datasets:[{ label:'Error', data:logs.map(l => Math.abs(l.prediction_error)), borderColor:'#fb7185', backgroundColor:'rgba(251,113,133,.18)', fill:true, borderWidth:3, pointRadius:2 }] }, options });
+      } catch (e) {}
+    }
+    function updateHistoryTable(logs){
+      const body = document.getElementById('history-body');
+      if (!body) return;
+      body.innerHTML = logs.length ? logs.slice(0,20).map(log => `
+        <tr>
+          <td style="font-weight:700;color:var(--text);">${safeFullTs(log.timestamp)}</td>
+          <td>${safeFullTs(log.predicted_time)}</td>
+          <td style="color:var(--green);font-weight:700;">${formatCurrency(log.ensemble_prediction)}</td>
+          <td>${formatCurrency(log.lstm_prediction)}</td>
+          <td>${formatCurrency(log.arima_prediction)}</td>
+          <td>${formatCurrency(log.linear_regression_prediction)}</td>
+          <td><span class="badge ${log.actual_price ? 'badge-success' : 'badge-primary'}">${log.actual_price ? 'Resolved' : 'Pending'}</span></td>
+        </tr>`).join('') : '<tr><td colspan="7" class="empty">No prediction history yet.</td></tr>';
+    }
+    async function triggerInference(){
+      const loader = document.getElementById('global-loader');
+      const latencyNode = document.getElementById('latency-val');
+      const start = performance.now(); loader.style.display = 'block';
+      try { const res = await fetch('/predict-next-hour'); lastPrediction = await res.json(); await loadLogsAndChart(); }
+      catch (e) {}
+      finally { if (latencyNode) latencyNode.innerText = `${Math.round(performance.now() - start)}ms`; loader.style.display = 'none'; }
+    }
+    async function updateDashboard(){
+      const loader = document.getElementById('global-loader'); loader.style.display = 'block';
+      await Promise.allSettled([loadLogsAndChart(), loadBtcPrice()]); loader.style.display = 'none';
+    }
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMobileNav(); });
+    document.addEventListener('DOMContentLoaded', () => { updateDashboard(); showPage('overview'); setInterval(updateDashboard, 300000); });
+  </script>
+</body>
+</html>

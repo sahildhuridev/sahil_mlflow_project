@@ -1,0 +1,28 @@
+# Environments
+/venv
+/venv_311
+/sahil_venv
+.env
+
+# MLflow
+mlruns/
+mlflow/mlflow.db
+
+# Data and SQLite
+*.db
+data/*.csv
+data/*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Models
+models/*.pkl
+models/*.pth
+models/*.h5
+
+install_debug.py
+
+readme.md

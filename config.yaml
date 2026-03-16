@@ -1,0 +1,34 @@
+data:
+  symbol: "BTC-USD"
+  interval: "1h"
+  history_period: "1mo" # Ultra-fast mode for demo
+  target_col: "Close"
+  sequence_length: 24
+
+training:
+  retraining_time: "00:00" # Midnight
+  validation_window_days: 14 # Reduced for speed
+
+models:
+  linear_regression:
+    enabled: true
+  arima:
+    enabled: true
+  lstm:
+    enabled: true
+    hidden_size: 32 # Smaller model for speed
+    num_layers: 1
+    dropout: 0.1
+    learning_rate: 0.001
+    epochs: 12
+    batch_size: 32
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+
+paths:
+  data_dir: "data"
+  models_dir: "models" # inside mlflow mostly, but good for local saves
+  predictions_db: "data/predictions.db"
+  mlflow_tracking_uri: "sqlite:///mlflow/mlflow.db"
